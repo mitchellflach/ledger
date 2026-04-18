@@ -1,350 +1,523 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Maple Ridge Ledger</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Maple Ridge — Trader Ledger</title>
 <style>
-  :root { --fg:#111; --muted:#666; --bg:#fff; --card:#f7f7f8; --line:#e4e4e7; --red:#c2410c; --green:#15803d; }
-  * { box-sizing:border-box; }
-  body { font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif; color:var(--fg); background:var(--bg); margin:0; }
-  header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:var(--bg); z-index:10; }
-  h1 { font-size:17px; margin:0; }
-  main { max-width:720px; margin:0 auto; padding:16px; }
-  button { font:inherit; cursor:pointer; border:1px solid var(--line); background:#fff; padding:8px 12px; border-radius:8px; }
-  button.primary { background:#111; color:#fff; border-color:#111; }
-  button.ghost { background:transparent; border-color:transparent; color:var(--muted); padding:6px 8px; }
-  button.danger { color:var(--red); }
-  input, select, textarea { font:inherit; width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; }
-  label { display:block; font-size:12px; color:var(--muted); margin:10px 0 4px; }
-  .row { display:flex; gap:8px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; }
-  .muted { color:var(--muted); font-size:13px; }
-  .pill { display:inline-block; font-size:11px; padding:2px 6px; border-radius:10px; background:#eee; margin-left:6px; text-transform:uppercase; letter-spacing:.5px; }
-  .pill.paid { background:#dcfce7; color:var(--green); }
-  .pill.unpaid { background:#ffe4d6; color:var(--red); }
-  .amount { font-variant-numeric:tabular-nums; font-weight:600; }
-  .amount.paid { color:var(--green); }
-  .amount.unpaid { color:var(--red); }
-  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:12px; }
-  .tab { padding:8px 12px; border:0; background:transparent; border-bottom:2px solid transparent; border-radius:0; }
-  .tab.active { border-bottom-color:#111; font-weight:600; }
-  .modal { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
-  .modal-card { background:#fff; border-radius:12px; padding:16px; width:100%; max-width:440px; max-height:90vh; overflow:auto; }
-  .identity-screen { min-height:70vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
-  .identity-screen button { font-size:18px; padding:16px 28px; width:220px; }
-  .trader-row { display:flex; justify-content:space-between; align-items:center; padding:14px; background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:8px; cursor:pointer; }
-  .trader-row:hover { background:#eee; }
-  .balance-big { font-size:24px; font-weight:700; }
-  .entry-head { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
-  .entry-desc { margin-top:4px; font-size:13px; color:var(--muted); }
-  .entry-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
-  .hist-row { padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px; }
-  .hist-row:last-child { border:0; }
-  .err { color:var(--red); font-size:13px; margin-top:8px; }
+:root{--charcoal:#2A2E30;--wood:#7A5C42;--taupe:#C2B49A;--cream:#F8F4EE;--off:#F0EAE0;--olive:#8A8C7A;--green:#1D9E75;--red:#D85A30;--blue:#378ADD;--r:14px;--rs:10px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--cream);color:var(--charcoal);min-height:100vh;max-width:430px;margin:0 auto}
+.hdr{background:var(--charcoal);padding:52px 20px 14px;display:flex;align-items:flex-end;justify-content:space-between}
+.hdr-ttl{font-size:22px;font-weight:700;color:var(--cream);letter-spacing:-.3px}
+.hdr-sub{font-size:10px;color:var(--taupe);margin-top:2px;letter-spacing:.07em;text-transform:uppercase}
+.sync-pill{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:20px;padding:4px 10px;flex-shrink:0}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--taupe);transition:background .4s;flex-shrink:0}
+.dot.ok{background:#4ade80}.dot.err{background:var(--red)}
+.sync-lbl{font-size:10px;color:rgba(248,244,238,.6);font-weight:500}
+.id-bar{background:var(--charcoal);padding:0 20px 14px;display:flex;align-items:center;gap:8px}
+.id-lbl{font-size:11px;color:var(--taupe);margin-right:2px}
+.id-btn{padding:5px 16px;border-radius:20px;border:1px solid rgba(194,180,154,.3);font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--taupe);font-family:inherit;transition:all .15s}
+.id-btn.on{background:var(--taupe);color:var(--charcoal);border-color:var(--taupe)}
+.tabs{display:flex;background:var(--charcoal);padding:0 20px}
+.tab{padding:10px 18px 14px 0;font-size:13px;font-weight:600;cursor:pointer;color:rgba(194,180,154,.5);border:none;background:none;border-bottom:2px solid transparent;font-family:inherit;transition:all .15s}
+.tab.on{color:var(--cream);border-bottom-color:var(--taupe)}
+.trader-bar{padding:12px 16px 6px;display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:6px 14px;border-radius:20px;border:1px solid var(--taupe);font-size:12px;font-weight:600;cursor:pointer;background:transparent;color:var(--wood);font-family:inherit;transition:all .15s}
+.chip.on{background:var(--wood);color:var(--cream);border-color:var(--wood)}
+.chip.add{border-style:dashed;color:var(--olive);font-weight:500}
+.bal-wrap{padding:4px 16px 0}
+.bal-card{background:var(--wood);border-radius:var(--r);padding:18px;color:var(--cream);position:relative;overflow:hidden}
+.bal-card::before{content:'';position:absolute;right:-16px;top:-16px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.07)}
+.bal-eye{font-size:10px;text-transform:uppercase;letter-spacing:.12em;opacity:.7;margin-bottom:5px;font-weight:600}
+.bal-num{font-size:34px;font-weight:700;letter-spacing:-1px;line-height:1}
+.bal-sub{font-size:12px;opacity:.75;margin-top:5px;font-weight:500}
+.bal-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.bal-mini{background:rgba(255,255,255,.12);border-radius:var(--rs);padding:9px 11px}
+.mini-lbl{font-size:10px;opacity:.7;margin-bottom:2px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.mini-val{font-size:15px;font-weight:700}
+.action-row{display:flex;gap:8px;padding:10px 16px 0}
+.pay-btn{flex:1;padding:12px;border-radius:var(--rs);border:1.5px solid var(--wood);font-size:13px;font-weight:700;color:var(--wood);background:transparent;cursor:pointer;font-family:inherit;transition:all .15s}
+.pay-btn:active{background:var(--off)}
+.export-btn{padding:12px 14px;border-radius:var(--rs);border:1.5px solid var(--taupe);font-size:13px;font-weight:700;color:var(--olive);background:transparent;cursor:pointer;font-family:inherit}
+.form-card{margin:8px 16px 0;border-radius:var(--r);border:1px solid var(--taupe);overflow:hidden;background:#fff}
+.form-inner{padding:14px}
+.form-ttl{font-size:10px;font-weight:700;color:var(--olive);margin-bottom:12px;text-transform:uppercase;letter-spacing:.08em}
+.fg{margin-bottom:10px}
+.fl{font-size:11px;color:var(--wood);font-weight:700;margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.06em}
+.fi{width:100%;padding:9px 11px;border:1px solid var(--taupe);border-radius:var(--rs);font-size:14px;background:var(--cream);color:var(--charcoal);font-family:inherit;-webkit-appearance:none}
+.fi:focus{outline:none;border-color:var(--wood)}
+.seg{display:flex;background:var(--off);border-radius:var(--rs);padding:3px;gap:3px}
+.sb{flex:1;padding:7px 2px;border-radius:8px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--olive);font-family:inherit;text-align:center;transition:all .12s}
+.sb.on{background:#fff;color:var(--charcoal)}
+.prev-box{border-radius:var(--rs);overflow:hidden;border:1px solid var(--off);margin-bottom:10px}
+.prev-hdr{padding:7px 11px;font-size:10px;font-weight:700;color:var(--wood);background:var(--off);text-transform:uppercase;letter-spacing:.06em}
+.prev-row{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--off);font-size:12px;background:#fff}
+.prev-row:last-child{border-bottom:none}
+.prev-chk{flex-shrink:0;font-weight:700}
+.prev-desc{flex:1;color:var(--charcoal);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prev-amt{flex-shrink:0;font-weight:700}
+.btn-row{display:flex;gap:8px;margin-top:12px}
+.btn-p{flex:1;padding:11px;background:var(--charcoal);color:var(--cream);border:none;border-radius:var(--rs);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-w{flex:1;padding:11px;background:var(--wood);color:var(--cream);border:none;border-radius:var(--rs);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.btn-w:disabled{opacity:.4;cursor:not-allowed}
+.btn-g{padding:11px 14px;background:transparent;color:var(--olive);border:1px solid var(--taupe);border-radius:var(--rs);font-size:13px;cursor:pointer;font-family:inherit}
+.sec-row{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 6px}
+.sec-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--olive);font-weight:700}
+.lnk{font-size:13px;color:var(--wood);cursor:pointer;border:none;background:none;font-family:inherit;font-weight:700}
+.proj-card{margin:0 16px 8px;border-radius:var(--r);border:.5px solid rgba(42,46,48,.1);background:#fff;overflow:hidden}
+.proj-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 14px;cursor:pointer;transition:background .12s}
+.proj-hdr:active{background:var(--cream)}
+.proj-name{font-size:14px;font-weight:700}
+.proj-meta{font-size:11px;color:var(--olive);margin-top:2px}
+.proj-right{display:flex;align-items:center;gap:10px}
+.proj-amt{font-size:14px;font-weight:700;text-align:right}
+.proj-who{font-size:11px;color:var(--olive);text-align:right;margin-top:1px}
+.chev{font-size:10px;color:var(--taupe);transition:transform .2s;display:inline-block}
+.chev.open{transform:rotate(90deg)}
+.entries{border-top:.5px solid var(--off)}
+.erow{display:flex;align-items:flex-start;gap:9px;padding:11px 14px;border-bottom:.5px solid var(--off)}
+.erow:last-child{border-bottom:none}
+.erow.paid{opacity:.35}
+.pip{width:3px;min-height:36px;border-radius:3px;flex-shrink:0;align-self:stretch}
+.pip-labour{background:var(--wood)}
+.pip-material{background:var(--green)}
+.pip-exchange{background:var(--blue)}
+.pip-general{background:var(--taupe)}
+.bdg{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;flex-shrink:0;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.bdg-t{background:#E1F5EE;color:#0F6E56}
+.bdg-m{background:#FAECE7;color:#993C1D}
+.e-body{flex:1;min-width:0}
+.e-desc{font-size:13px;font-weight:500;line-height:1.35}
+.e-notes{font-size:11px;color:var(--olive);margin-top:2px;font-style:italic}
+.e-meta{font-size:11px;color:var(--olive);margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.e-type{font-size:10px;font-weight:600;padding:1px 6px;border-radius:20px;display:inline-block}
+.type-labour{background:rgba(122,92,66,.12);color:var(--wood)}
+.type-material{background:rgba(29,158,117,.12);color:var(--green)}
+.type-exchange{background:rgba(55,138,221,.15);color:var(--blue)}
+.type-general{background:rgba(194,180,154,.25);color:var(--olive)}
+.e-photo-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;border:.5px solid var(--off);flex-shrink:0;cursor:pointer}
+.e-right{text-align:right;flex-shrink:0}
+.e-amt{font-size:14px;font-weight:700}
+.mark-btn{font-size:11px;color:var(--wood);cursor:pointer;border:none;background:none;padding:0;margin-top:3px;display:block;margin-left:auto;font-family:inherit;font-weight:700}
+.paid-lbl{font-size:10px;color:var(--green);display:block;margin-top:2px;font-weight:600;text-align:right}
+.proj-actions{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:.5px solid var(--off)}
+.add-lnk{font-size:12px;color:var(--wood);cursor:pointer;border:none;background:none;font-family:inherit;font-weight:700}
+.settle-btn{font-size:12px;color:var(--olive);cursor:pointer;border:.5px solid var(--taupe);background:transparent;border-radius:8px;padding:5px 11px;font-family:inherit;font-weight:600}
+.photo-upload{border:1.5px dashed var(--taupe);border-radius:var(--rs);padding:16px;text-align:center;cursor:pointer;background:var(--cream);margin-bottom:0}
+.photo-upload-lbl{font-size:12px;color:var(--olive);display:block;margin-top:5px}
+.photo-thumb-prev{width:60px;height:60px;border-radius:8px;object-fit:cover;margin-top:8px}
+.hist-wrap{padding:8px 16px}
+.hist-item{padding:12px 0;border-bottom:.5px solid var(--off);display:flex;align-items:flex-start;gap:10px}
+.hist-item:last-child{border-bottom:none}
+.hist-icon{font-size:12px;flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--off);display:flex;align-items:center;justify-content:center}
+.hist-body{flex:1}
+.hist-act{font-size:13px;font-weight:500;line-height:1.4}
+.hist-meta{font-size:11px;color:var(--olive);margin-top:2px}
+.hist-by{color:var(--wood);font-weight:700}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:300;display:flex;align-items:flex-end;min-height:400px}
+.modal-sheet{background:#fff;border-radius:var(--r) var(--r) 0 0;padding:20px 16px 40px;width:100%;max-height:80vh;overflow-y:auto}
+.modal-handle{width:36px;height:4px;background:var(--taupe);border-radius:2px;margin:0 auto 18px}
+.modal-ttl{font-size:16px;font-weight:700;margin-bottom:16px}
+.empty{padding:48px 16px;text-align:center;color:var(--olive);font-size:14px;line-height:1.8}
+.loading{padding:48px 16px;text-align:center;color:var(--olive);font-size:14px}
+.gn{color:var(--green)}.rd{color:var(--red)}
+.gn-d{color:var(--green)}.rd-d{color:var(--red)}
+.spacer{height:48px}
+.offline-bar{background:var(--red);color:#fff;text-align:center;font-size:12px;font-weight:600;padding:7px;display:none}
 </style>
 </head>
 <body>
-<header>
-  <h1>Maple Ridge Ledger</h1>
-  <div id="identity-badge"></div>
-</header>
-<main id="app"></main>
+<div class="offline-bar" id="offline-bar">No connection — changes will sync when online</div>
+<div class="hdr">
+  <div><div class="hdr-ttl">Trader Ledger</div><div class="hdr-sub">Maple Ridge Homes</div></div>
+  <div class="sync-pill"><div class="dot" id="dot"></div><span class="sync-lbl" id="sync-lbl">Loading</span></div>
+</div>
+<div class="id-bar">
+  <span class="id-lbl">I am</span>
+  <button class="id-btn" id="ib-m">Mitch</button>
+  <button class="id-btn" id="ib-l">Lukas</button>
+</div>
+<div class="tabs">
+  <button class="tab on" id="t-ov">Overview</button>
+  <button class="tab" id="t-hi">History</button>
+</div>
+<div id="v-ov"></div>
+<div id="v-hi" style="display:none"></div>
+<div id="modal-root"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = "https://cxyzruafgfmekddqsiny.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4eXpydWFmZ2ZtZWtkZHFzaW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTEyOTIsImV4cCI6MjA5MjAyNzI5Mn0.vO34QYY4cgqJmZNTboxjva_xsN_pVBBRkRSU0T1XwVA";
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const BASE='https://cxyzruafgfmekddqsiny.supabase.co/rest/v1';
+const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4eXpydWFmZ2ZtZWtkZHFzaW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTEyOTIsImV4cCI6MjA5MjAyNzI5Mn0.vO34QYY4cgqJmZNTboxjva_xsN_pVBBRkRSU0T1XwVA';
+const STORE='https://cxyzruafgfmekddqsiny.supabase.co/storage/v1/object/public/receipts/';
+const HDR={'Content-Type':'application/json','apikey':KEY,'Authorization':'Bearer '+KEY};
 
-const $ = (s, r=document) => r.querySelector(s);
-const el = (t, attrs={}, ...kids) => {
-  const e = document.createElement(t);
-  for (const [k,v] of Object.entries(attrs)) {
-    if (k === "class") e.className = v;
-    else if (k === "onclick") e.onclick = v;
-    else if (k === "style") e.setAttribute("style", v);
-    else e.setAttribute(k, v);
-  }
-  for (const k of kids.flat()) {
-    if (k == null || k === "") continue;
-    e.append(k?.nodeType ? k : document.createTextNode(k));
-  }
-  return e;
-};
-const fmt$ = n => (Number(n)<0?"-":"") + "$" + Math.abs(Number(n)||0).toFixed(2);
-const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now()+"-"+Math.random().toString(36).slice(2,10));
-const today = () => new Date().toISOString().slice(0,10);
-const nowIso = () => new Date().toISOString();
+let S={user:localStorage.getItem('mrh_who')||'Mitch',tab:'ov',traders:[],entries:[],history:[],tid:localStorage.getItem('mrh_tid')||null,expanded:new Set(),openAdd:null,addParty:null,addType:'labour',payOpen:false,payPayer:null,loaded:false};
 
-const state = {
-  identity: localStorage.getItem("mrl_identity") || null,
-  view: "traders",
-  traderId: null,
-  tab: "entries",
-};
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function $f(n){return'$'+Number(n).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function $d(iso){if(!iso)return'';const d=new Date(iso.length===10?iso+'T12:00:00Z':iso);return d.toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric',timeZone:'America/Toronto'})}
+function $ts(iso){const d=new Date(iso);return d.toLocaleDateString('en-CA',{month:'short',day:'numeric',timeZone:'America/Toronto'})+' at '+d.toLocaleTimeString('en-CA',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:'America/Toronto'})}
+function hesc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;')}
+function sync(st,msg){const d=document.getElementById('dot'),l=document.getElementById('sync-lbl');if(d)d.className='dot'+(st==='ok'?' ok':st==='err'?' err':'');if(l)l.textContent=msg}
+function trader(){return S.traders.find(t=>t.id===S.tid)||S.traders[0]}
+function tname(){const t=trader();return t?t.name.split(' ')[0]:'Trader'}
 
-function setIdentity(name) {
-  state.identity = name;
-  localStorage.setItem("mrl_identity", name);
-  render();
+async function dbGet(table,query=''){
+  try{const r=await fetch(`${BASE}/${table}?${query}&order=created_at`,{headers:HDR});if(!r.ok)throw new Error(await r.text());document.getElementById('offline-bar').style.display='none';return r.json()}
+  catch(e){document.getElementById('offline-bar').style.display='';return[]}
+}
+async function dbInsert(table,row){const r=await fetch(`${BASE}/${table}`,{method:'POST',headers:{...HDR,'Prefer':'return=minimal'},body:JSON.stringify(row)});if(!r.ok)throw new Error(await r.text())}
+async function dbUpdate(table,id,data){const r=await fetch(`${BASE}/${table}?id=eq.${id}`,{method:'PATCH',headers:{...HDR,'Prefer':'return=minimal'},body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text())}
+
+async function uploadPhoto(file,entryId){
+  try{
+    const ext=file.name.split('.').pop()||'jpg';
+    const path=`${entryId}.${ext}`;
+    const r=await fetch(`https://cxyzruafgfmekddqsiny.supabase.co/storage/v1/object/receipts/${path}`,{method:'POST',headers:{'apikey':KEY,'Authorization':'Bearer '+KEY,'Content-Type':file.type},body:file});
+    if(!r.ok){console.warn('Photo upload failed');return null}
+    return path;
+  }catch(e){console.warn('Photo upload error',e);return null}
 }
 
-function go(view, extra={}) {
-  Object.assign(state, { view, ...extra });
-  render();
+async function loadAll(){
+  sync('','Syncing');
+  try{
+    const[traders,entries,history]=await Promise.all([
+      dbGet('traders','select=*'),
+      dbGet('ledger_entries','select=*&order=date'),
+      dbGet('ledger_history','select=*&order=ts.desc&limit=200')
+    ]);
+    S.traders=traders;S.entries=entries;S.history=history;
+    if(!S.tid&&S.traders.length)S.tid=S.traders[0].id;
+    S.loaded=true;sync('ok','Live');render();
+  }catch(e){sync('err','Error');console.error(e)}
 }
 
-async function logHistory(trader_id, action, note) {
-  await sb.from("ledger_history").insert({
-    id: uid(), trader_id, ts: nowIso(), by_user: state.identity, action, note: note || null
+async function doInsert(table,row,note){
+  sync('','Saving');
+  try{await dbInsert(table,row);if(note&&S.tid)await dbInsert('ledger_history',{id:uid(),trader_id:S.tid,ts:new Date().toISOString(),by_user:S.user,action:table==='traders'?'add_trader':'add',note});sync('ok','Saved');await loadAll()}
+  catch(e){sync('err','Error');alert('Save failed — check connection')}
+}
+
+async function doPaid(entry){
+  sync('','Saving');
+  try{await dbUpdate('ledger_entries',entry.id,{paid:true,paid_at:new Date().toISOString()});await dbInsert('ledger_history',{id:uid(),trader_id:entry.trader_id,ts:new Date().toISOString(),by_user:S.user,action:'paid',note:`Marked paid: ${$f(entry.amount)} — ${entry.description}`});sync('ok','Saved');await loadAll()}
+  catch(e){sync('err','Error')}
+}
+
+async function doSettleAll(tid,proj){
+  const out=S.entries.filter(e=>e.trader_id===tid&&e.proj===proj&&!e.paid);
+  if(!out.length)return;
+  sync('','Saving');
+  try{
+    for(const e of out)await dbUpdate('ledger_entries',e.id,{paid:true,paid_at:new Date().toISOString()});
+    const total=out.reduce((s,e)=>s+ +e.amount,0);
+    await dbInsert('ledger_history',{id:uid(),trader_id:tid,ts:new Date().toISOString(),by_user:S.user,action:'settle',note:`Settled all in ${proj} — ${$f(total)} total`});
+    sync('ok','Saved');await loadAll();
+  }catch(e){sync('err','Error')}
+}
+
+async function doPayment(tid,payer,amount,date){
+  const out=S.entries.filter(e=>e.trader_id===tid&&e.party===payer&&!e.paid).sort((a,b)=>a.date.localeCompare(b.date));
+  let rem=amount;const full=[];let partialE=null,partialAmt=0;
+  for(const e of out){if(rem<=0.001)break;if(+e.amount<=rem+0.001){full.push(e);rem=Math.max(0,rem-+e.amount)}else{partialE=e;partialAmt=rem;rem=0}}
+  const paidAt=new Date(date+'T12:00:00Z').toISOString();
+  sync('','Saving');
+  try{
+    for(const e of full)await dbUpdate('ledger_entries',e.id,{paid:true,paid_at:paidAt});
+    if(partialE&&partialAmt>0.01){const remain=+partialE.amount-partialAmt;await dbUpdate('ledger_entries',partialE.id,{paid:true,paid_at:paidAt,amount:partialAmt});await dbInsert('ledger_entries',{id:uid(),trader_id:tid,party:payer,amount:remain,description:partialE.description+' (remaining)',proj:partialE.proj,entry_type:partialE.entry_type,date:partialE.date,notes:'',photo_path:null,paid:false,paid_at:null,created_at:new Date().toISOString(),created_by:S.user})}
+    if(rem>0.01)await dbInsert('ledger_entries',{id:uid(),trader_id:tid,party:payer==='Mitch'?tname():'Mitch',amount:rem,description:'Overpayment credit',proj:'General',entry_type:'general',date,notes:'',photo_path:null,paid:false,paid_at:null,created_at:new Date().toISOString(),created_by:S.user});
+    await dbInsert('ledger_history',{id:uid(),trader_id:tid,ts:new Date().toISOString(),by_user:S.user,action:'payment',note:`Payment of ${$f(amount)} from ${payer} — ${full.length} entr${full.length===1?'y':'ies'} settled${partialE?', 1 partial':''}${rem>0.01?', '+$f(rem)+' credit':''}`});
+    S.payOpen=false;sync('ok','Saved');await loadAll();
+  }catch(e){sync('err','Error')}
+}
+
+function doExport(){
+  const t=trader();if(!t)return;
+  const{l,m,net}=getNet(S.tid);
+  let txt=`MAPLE RIDGE HOMES — TRADER LEDGER\n${t.name}\n${new Date().toLocaleDateString('en-CA',{month:'long',day:'numeric',year:'numeric'})}\n${'─'.repeat(38)}\n\n`;
+  getProjects(S.tid).forEach(p=>{
+    txt+=`PROJECT: ${p.name}\n`;
+    p.entries.forEach(e=>{txt+=`  ${e.paid?'[PAID]':'[OPEN]'} ${e.party} owes ${$f(e.amount)} — ${e.description} (${e.entry_type}) ${$d(e.date)}\n`;if(e.notes)txt+=`         Note: ${e.notes}\n`});
+    txt+=`  Subtotal: ${$f(Math.abs(p.lo-p.mo))} — ${p.lo>p.mo?tname()+' owes':'Mitch owes'}\n\n`;
+  });
+  txt+=`${'─'.repeat(38)}\nNET: ${$f(Math.abs(net))} — ${net>0?tname()+' owes Mitch':'Mitch owes '+tname()}\n`;
+  if(navigator.share){navigator.share({title:'Ledger — '+t.name,text:txt})}
+  else{const el=document.createElement('textarea');el.value=txt;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);alert('Copied to clipboard — paste into iMessage or Notes')}
+}
+
+function setUser(u){S.user=u;localStorage.setItem('mrh_who',u);document.getElementById('ib-m').classList.toggle('on',u==='Mitch');document.getElementById('ib-l').classList.toggle('on',u==='Lukas');if(u!=='Mitch'){const t=S.traders.find(x=>x.name.toLowerCase().includes(u.toLowerCase()));if(t){S.tid=t.id;localStorage.setItem('mrh_tid',t.id)}}render()}
+document.getElementById('ib-m').onclick=()=>setUser('Mitch');
+document.getElementById('ib-l').onclick=()=>setUser('Lukas');
+setUser(S.user);
+document.getElementById('t-ov').onclick=()=>setTab('ov');
+document.getElementById('t-hi').onclick=()=>setTab('hi');
+function setTab(t){S.tab=t;document.getElementById('v-ov').style.display=t==='ov'?'':'none';document.getElementById('v-hi').style.display=t==='hi'?'':'none';document.getElementById('t-ov').classList.toggle('on',t==='ov');document.getElementById('t-hi').classList.toggle('on',t==='hi');render()}
+
+function getProjects(tid){
+  const m={};
+  S.entries.filter(e=>e.trader_id===tid).forEach(e=>{
+    if(!m[e.proj])m[e.proj]={name:e.proj,entries:[],lo:0,mo:0};
+    m[e.proj].entries.push(e);
+    if(!e.paid){if(e.party===tname())m[e.proj].lo+=+e.amount;else m[e.proj].mo+=+e.amount}
+  });
+  return Object.values(m).sort((a,b)=>a.name.localeCompare(b.name));
+}
+function getNet(tid){let l=0,m=0;S.entries.filter(e=>e.trader_id===tid&&!e.paid).forEach(e=>{if(e.party===tname())l+=+e.amount;else m+=+e.amount});return{l,m,net:l-m}}
+function calcPay(tid,payer,amount){
+  const out=S.entries.filter(e=>e.trader_id===tid&&e.party===payer&&!e.paid).sort((a,b)=>a.date.localeCompare(b.date));
+  let rem=amount;const full=[];let partial=null,partialAmt=0;
+  for(const e of out){if(rem<=0.001)break;if(+e.amount<=rem+0.001){full.push(e);rem=Math.max(0,rem-+e.amount)}else{partial=e;partialAmt=rem;rem=0}}
+  return{full,partial,partialAmt,leftover:rem};
+}
+
+function tc(t){return{labour:'type-labour',material:'type-material',exchange:'type-exchange',general:'type-general'}[t]||'type-general'}
+function pc(t){return{labour:'pip-labour',material:'pip-material',exchange:'pip-exchange',general:'pip-general'}[t]||'pip-general'}
+
+function render(){if(!S.loaded){document.getElementById('v-ov').innerHTML='<div class="loading">Loading...</div>';return}if(S.tab==='ov')renderOv();else renderHi()}
+
+function renderOv(){
+  const t=trader();
+  if(!t){document.getElementById('v-ov').innerHTML=`<div class="empty">No traders yet.<br>Tap + Trader to get started.</div>`;return}
+  S.addParty=S.addParty||tname();S.payPayer=S.payPayer||tname();
+  const{l,m,net}=getNet(S.tid);
+  const abs=Math.abs(net),who=net>0?tname():net<0?'Mitch':null;
+  let html='';
+  if(S.user==='Mitch'){
+    html+=`<div class="trader-bar">`;
+    S.traders.forEach(x=>{html+=`<button class="chip${x.id===S.tid?' on':''}" data-tid="${x.id}">${hesc(x.name.split(' ')[0])}</button>`});
+    html+=`<button class="chip add" id="btn-at">+ Trader</button></div>`;
+  }
+  html+=`<div class="bal-wrap"><div class="bal-card">
+    <div class="bal-eye">${hesc(t.name)}</div>
+    <div class="bal-num${who?(net>0?' gn':' rd'):''}">${who?$f(abs):'All settled'}</div>
+    <div class="bal-sub">${who?who+' owes Maple Ridge':'Nothing outstanding'}</div>
+    <div class="bal-grid">
+      <div class="bal-mini"><div class="mini-lbl">${hesc(tname())} owes</div><div class="mini-val">${$f(l)}</div></div>
+      <div class="bal-mini"><div class="mini-lbl">Mitch owes</div><div class="mini-val">${$f(m)}</div></div>
+    </div>
+  </div></div>
+  <div class="action-row">
+    <button class="pay-btn" id="btn-pay">↙ Record Payment</button>
+    <button class="export-btn" id="btn-export">⬆ Share</button>
+  </div>`;
+
+  if(S.payOpen){
+    const today=new Date().toISOString().split('T')[0],pp=S.payPayer;
+    html+=`<div class="form-card"><div class="form-inner">
+      <div class="form-ttl">Record Payment</div>
+      <div class="fg"><label class="fl">Who paid</label>
+        <div class="seg">
+          <button class="sb${pp===tname()?' on':''}" id="pp-t">${hesc(tname())} paid Mitch</button>
+          <button class="sb${pp==='Mitch'?' on':''}" id="pp-m">Mitch paid ${hesc(tname())}</button>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Amount ($)</label><input class="fi" id="pay-amt" type="number" placeholder="0.00" step="0.01" min="0" inputmode="decimal"/></div>
+      <div class="fg"><label class="fl">Date</label><input class="fi" id="pay-date" type="date" value="${today}"/></div>
+      <div id="pay-preview"></div>
+      <div class="btn-row"><button class="btn-w" id="btn-apply" disabled>Apply Payment</button><button class="btn-g" id="btn-pcxl">Cancel</button></div>
+    </div></div>`;
+  }
+
+  html+=`<div class="sec-row"><span class="sec-lbl">Projects</span><button class="lnk" id="btn-gadd">+ Add Entry</button></div>`;
+  if(S.openAdd==='global')html+=buildEntryForm(S.tid,getProjects(S.tid)[0]?.name||'General');
+
+  const projs=getProjects(S.tid);
+  if(!projs.length&&!S.openAdd)html+=`<div class="empty">No entries yet.<br>Tap + Add Entry to start.</div>`;
+
+  projs.forEach(p=>{
+    const pnet=p.lo-p.mo,pabs=Math.abs(pnet);
+    const pwho=pnet>0?tname()+' owes':pnet<0?'Mitch owes':'Settled';
+    const pcls=pnet>0?' gn-d':pnet<0?' rd-d':'';
+    const exp=S.expanded.has(p.name);
+    const out=p.entries.filter(e=>!e.paid),pd=p.entries.filter(e=>e.paid);
+    html+=`<div class="proj-card"><div class="proj-hdr" data-pn="${hesc(p.name)}">
+      <div><div class="proj-name">${hesc(p.name)}</div><div class="proj-meta">${out.length} outstanding${pd.length?' · '+pd.length+' paid':''}</div></div>
+      <div class="proj-right"><div><div class="proj-amt${pcls}">${pabs>0?$f(pabs):'Settled'}</div><div class="proj-who">${pwho}</div></div><span class="chev${exp?' open':''}">▶</span></div>
+    </div>`;
+    if(exp){
+      html+=`<div class="entries">`;
+      [...out,...pd].forEach(e=>{
+        const isT=e.party===tname();
+        const photo=e.photo_path?`<img class="e-photo-thumb" src="${STORE+e.photo_path}" onerror="this.style.display='none'"/>`:'' ;
+        html+=`<div class="erow${e.paid?' paid':''}">
+          <div class="pip ${pc(e.entry_type||'general')}"></div>
+          <span class="bdg ${isT?'bdg-t':'bdg-m'}">${hesc(e.party)}</span>
+          <div class="e-body">
+            <div class="e-desc">${hesc(e.description)}</div>
+            ${e.notes?`<div class="e-notes">${hesc(e.notes)}</div>`:''}
+            <div class="e-meta">${$d(e.date)} <span class="e-type ${tc(e.entry_type||'general')}">${e.entry_type||'general'}</span> <span style="color:var(--taupe)">· ${hesc(e.created_by||'')}</span></div>
+          </div>
+          ${photo}
+          <div class="e-right">
+            <div class="e-amt">${$f(e.amount)}</div>
+            ${e.paid?`<span class="paid-lbl">Paid</span>`:`<button class="mark-btn" data-eid="${e.id}">Mark paid</button>`}
+          </div>
+        </div>`;
+      });
+      html+=`<div class="proj-actions">
+        <button class="add-lnk" data-padd="${hesc(p.name)}">+ Add to ${hesc(p.name)}</button>
+        ${out.length>1?`<button class="settle-btn" data-settle="${hesc(p.name)}">Settle all</button>`:''}
+      </div>`;
+      if(S.openAdd===p.name)html+=buildEntryForm(S.tid,p.name);
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+  });
+  html+=`<div class="spacer"></div>`;
+  document.getElementById('v-ov').innerHTML=html;
+  attachOv();
+}
+
+function buildEntryForm(tid,projName){
+  const opts=getProjects(tid).map(p=>`<option value="${hesc(p.name)}"${projName===p.name?' selected':''}>${hesc(p.name)}</option>`).join('');
+  const today=new Date().toISOString().split('T')[0];
+  const ap=S.addParty||tname(),at=S.addType||'labour';
+  return`<div class="form-card" id="eform" style="margin:0 16px 8px"><div class="form-inner">
+    <div class="form-ttl">New Entry</div>
+    <div class="fg"><label class="fl">Who owes</label>
+      <div class="seg"><button class="sb${ap===tname()?' on':''}" id="ep-t">${hesc(tname())} owes</button><button class="sb${ap==='Mitch'?' on':''}" id="ep-m">Mitch owes</button></div>
+    </div>
+    <div class="fg"><label class="fl">Type</label>
+      <div class="seg">
+        <button class="sb${at==='labour'?' on':''}" id="et-l">Labour</button>
+        <button class="sb${at==='material'?' on':''}" id="et-mat">Material</button>
+        <button class="sb${at==='exchange'?' on':''}" id="et-ex">Exchange</button>
+        <button class="sb${at==='general'?' on':''}" id="et-g">General</button>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Amount ($)</label><input class="fi" id="ei-amt" type="number" placeholder="0.00" step="0.01" min="0" inputmode="decimal"/></div>
+    <div class="fg"><label class="fl">Description</label><input class="fi" id="ei-desc" type="text" placeholder="What is this for?"/></div>
+    <div class="fg"><label class="fl">Notes (optional)</label><input class="fi" id="ei-notes" type="text" placeholder="Extra context..."/></div>
+    <div class="fg"><label class="fl">Project</label>
+      <select class="fi" id="ei-proj">${opts}<option value="__new__">+ New project...</option></select>
+    </div>
+    <div class="fg" id="fg-np" style="display:none"><input class="fi" id="ei-np" type="text" placeholder="Project name"/></div>
+    <div class="fg"><label class="fl">Date</label><input class="fi" id="ei-date" type="date" value="${today}"/></div>
+    <div class="fg">
+      <label class="fl">Receipt photo (optional)</label>
+      <div class="photo-upload" id="photo-drop">
+        <span style="font-size:22px">📷</span>
+        <span class="photo-upload-lbl">Tap to attach receipt</span>
+      </div>
+      <input type="file" id="ei-photo" accept="image/*" capture="environment" style="display:none"/>
+      <img id="photo-prev" class="photo-thumb-prev" style="display:none"/>
+    </div>
+    <div class="btn-row"><button class="btn-p" id="btn-esave">Save Entry</button><button class="btn-g" id="btn-ecxl">Cancel</button></div>
+  </div></div>`;
+}
+
+function attachOv(){
+  document.querySelectorAll('.chip[data-tid]').forEach(el=>{el.addEventListener('click',()=>{S.tid=el.dataset.tid;localStorage.setItem('mrh_tid',S.tid);S.payOpen=false;S.openAdd=null;renderOv()})});
+  const bat=document.getElementById('btn-at');if(bat)bat.addEventListener('click',()=>showAddTrader());
+  document.querySelectorAll('.proj-hdr[data-pn]').forEach(el=>{el.addEventListener('click',()=>{const n=el.dataset.pn;if(S.expanded.has(n))S.expanded.delete(n);else S.expanded.add(n);renderOv()})});
+  document.querySelectorAll('.mark-btn[data-eid]').forEach(el=>{el.addEventListener('click',async ev=>{ev.stopPropagation();const e=S.entries.find(x=>x.id===el.dataset.eid);if(e)await doPaid(e)})});
+  document.querySelectorAll('.settle-btn[data-settle]').forEach(el=>{el.addEventListener('click',async ev=>{ev.stopPropagation();if(confirm('Settle all open entries in '+el.dataset.settle+'?'))await doSettleAll(S.tid,el.dataset.settle)})});
+  document.querySelectorAll('.add-lnk[data-padd]').forEach(el=>{el.addEventListener('click',ev=>{ev.stopPropagation();const n=el.dataset.padd;S.openAdd=S.openAdd===n?null:n;S.addParty=tname();renderOv()})});
+  const gb=document.getElementById('btn-gadd');if(gb)gb.addEventListener('click',()=>{S.openAdd=S.openAdd==='global'?null:'global';S.addParty=tname();renderOv()});
+  const pb=document.getElementById('btn-pay');if(pb)pb.addEventListener('click',()=>{S.payOpen=!S.payOpen;renderOv()});
+  const eb=document.getElementById('btn-export');if(eb)eb.addEventListener('click',doExport);
+
+  if(S.payOpen){
+    const ppt=document.getElementById('pp-t'),ppm=document.getElementById('pp-m');
+    function setPayPayer(p){S.payPayer=p;ppt.classList.toggle('on',p===tname());ppm.classList.toggle('on',p==='Mitch');upPrev()}
+    if(ppt)ppt.addEventListener('click',()=>setPayPayer(tname()));
+    if(ppm)ppm.addEventListener('click',()=>setPayPayer('Mitch'));
+    const pa=document.getElementById('pay-amt'),apb=document.getElementById('btn-apply');
+    function upPrev(){
+      const amt=parseFloat(pa?.value||'0');
+      const slot=document.getElementById('pay-preview');
+      if(slot&&S.payPayer&&amt>0){
+        const{full,partial,partialAmt,leftover}=calcPay(S.tid,S.payPayer,amt);
+        let h=`<div class="prev-box"><div class="prev-hdr">What gets settled</div>`;
+        full.forEach(e=>{h+=`<div class="prev-row"><span class="prev-chk" style="color:var(--green)">✓</span><span class="prev-desc">${hesc(e.description)}</span><span class="prev-amt">${$f(e.amount)}</span></div>`});
+        if(partial)h+=`<div class="prev-row"><span class="prev-chk" style="color:var(--wood)">◑</span><span class="prev-desc">${hesc(partial.description)} (partial)</span><span class="prev-amt">${$f(partialAmt)}</span></div>`;
+        if(leftover>0.01)h+=`<div class="prev-row"><span class="prev-chk" style="color:var(--green)">+</span><span class="prev-desc">Credit / overpayment</span><span class="prev-amt">${$f(leftover)}</span></div>`;
+        slot.innerHTML=h+'</div>';
+      }else if(slot)slot.innerHTML='';
+      if(apb)apb.disabled=!(amt>0);
+    }
+    if(pa)pa.addEventListener('input',upPrev);
+    if(apb)apb.addEventListener('click',async()=>{const amt=parseFloat(document.getElementById('pay-amt')?.value||'0');const date=document.getElementById('pay-date')?.value||new Date().toISOString().split('T')[0];if(!amt||amt<=0)return;await doPayment(S.tid,S.payPayer,amt,date)});
+    const pcxl=document.getElementById('btn-pcxl');if(pcxl)pcxl.addEventListener('click',()=>{S.payOpen=false;renderOv()});
+  }
+
+  const eform=document.getElementById('eform');if(!eform)return;
+  const ept=document.getElementById('ep-t'),epm=document.getElementById('ep-m');
+  function setAP(p){S.addParty=p;ept.classList.toggle('on',p===tname());epm.classList.toggle('on',p==='Mitch')}
+  if(ept)ept.addEventListener('click',()=>setAP(tname()));
+  if(epm)epm.addEventListener('click',()=>setAP('Mitch'));
+  const btns={labour:document.getElementById('et-l'),material:document.getElementById('et-mat'),exchange:document.getElementById('et-ex'),general:document.getElementById('et-g')};
+  function setAT(t){S.addType=t;Object.values(btns).forEach(b=>{if(b)b.classList.remove('on')});if(btns[t])btns[t].classList.add('on')}
+  Object.entries(btns).forEach(([k,b])=>{if(b)b.addEventListener('click',()=>setAT(k))});
+  const projSel=document.getElementById('ei-proj'),npRow=document.getElementById('fg-np');
+  if(projSel&&npRow)projSel.addEventListener('change',()=>{npRow.style.display=projSel.value==='__new__'?'':'none'});
+
+  let pendingPhoto=null;
+  const photoInput=document.getElementById('ei-photo'),photoPrev=document.getElementById('photo-prev'),photoDrop=document.getElementById('photo-drop');
+  if(photoDrop)photoDrop.addEventListener('click',()=>photoInput?.click());
+  if(photoInput)photoInput.addEventListener('change',()=>{
+    const f=photoInput.files[0];if(!f)return;pendingPhoto=f;
+    const url=URL.createObjectURL(f);
+    if(photoPrev){photoPrev.src=url;photoPrev.style.display='block'}
+    if(photoDrop)photoDrop.innerHTML='<span style="font-size:22px">✓</span><span class="photo-upload-lbl">Receipt attached — tap to change</span>';
+  });
+
+  const saveBtn=document.getElementById('btn-esave');
+  if(saveBtn)saveBtn.addEventListener('click',async()=>{
+    const amt=parseFloat(document.getElementById('ei-amt')?.value||'0');
+    const desc=(document.getElementById('ei-desc')?.value||'').trim();
+    const notes=(document.getElementById('ei-notes')?.value||'').trim();
+    const date=document.getElementById('ei-date')?.value||new Date().toISOString().split('T')[0];
+    let proj=projSel?.value||'General';
+    if(proj==='__new__')proj=(document.getElementById('ei-np')?.value||'').trim()||'General';
+    if(!amt||amt<=0){alert('Enter a valid amount');return}
+    if(!desc){alert('Enter a description');return}
+    const entryId=uid();
+    let photoPath=null;
+    if(pendingPhoto){saveBtn.textContent='Uploading...';saveBtn.disabled=true;photoPath=await uploadPhoto(pendingPhoto,entryId);saveBtn.textContent='Save Entry';saveBtn.disabled=false}
+    const entry={id:entryId,trader_id:S.tid,party:S.addParty||tname(),amount:amt,description:desc,notes,proj,entry_type:S.addType||'labour',date,photo_path:photoPath,paid:false,paid_at:null,created_at:new Date().toISOString(),created_by:S.user};
+    S.openAdd=null;S.expanded.add(proj);pendingPhoto=null;
+    await doInsert('ledger_entries',entry,`Added ${$f(amt)} — ${desc} (${entry.party} owes · ${proj})`);
+  });
+  const ecxl=document.getElementById('btn-ecxl');if(ecxl)ecxl.addEventListener('click',()=>{S.openAdd=null;renderOv()});
+}
+
+function renderHi(){
+  if(!S.loaded){document.getElementById('v-hi').innerHTML='<div class="loading">Loading...</div>';return}
+  const hist=S.history.filter(h=>h.trader_id===S.tid);
+  if(!hist.length){document.getElementById('v-hi').innerHTML='<div class="empty">No history yet.</div>';return}
+  const icons={add:'＋',paid:'✓',init:'◉',payment:'↙',settle:'☑',add_trader:'+'};
+  document.getElementById('v-hi').innerHTML=`<div class="hist-wrap">`+hist.map(h=>`
+    <div class="hist-item">
+      <div class="hist-icon">${icons[h.action]||'·'}</div>
+      <div class="hist-body"><div class="hist-act">${hesc(h.note)}</div><div class="hist-meta">${$ts(h.ts)} · <span class="hist-by">${hesc(h.by_user)}</span></div></div>
+    </div>`).join('')+`</div><div class="spacer"></div>`;
+}
+
+function showAddTrader(){
+  const root=document.getElementById('modal-root');
+  root.innerHTML=`<div class="modal-bg" id="mbg"><div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-ttl">Add Trader</div>
+    <div class="fg"><label class="fl">Full name</label><input class="fi" id="m-name" type="text" placeholder="e.g. Brad Flach" autofocus/></div>
+    <div class="btn-row"><button class="btn-p" id="m-save">Add Trader</button><button class="btn-g" id="m-cxl">Cancel</button></div>
+  </div></div>`;
+  setTimeout(()=>document.getElementById('m-name')?.focus(),150);
+  document.getElementById('m-cxl').addEventListener('click',()=>{root.innerHTML=''});
+  document.getElementById('mbg').addEventListener('click',e=>{if(e.target===e.currentTarget)root.innerHTML=''});
+  document.getElementById('m-save').addEventListener('click',async()=>{
+    const name=(document.getElementById('m-name')?.value||'').trim();
+    if(!name){alert('Enter a name');return}
+    const id=uid();root.innerHTML='';S.tid=id;localStorage.setItem('mrh_tid',id);
+    await doInsert('traders',{id,name,created_at:new Date().toISOString()},'Trader added: '+name);
   });
 }
 
-function renderIdentity() {
-  $("#app").replaceChildren(
-    el("div", { class: "identity-screen" },
-      el("div", { class: "muted" }, "Who are you?"),
-      el("button", { class: "primary", onclick: () => setIdentity("Mitch") }, "I am Mitch"),
-      el("button", { class: "primary", onclick: () => setIdentity("Lukas") }, "I am Lukas")
-    )
-  );
-}
-
-async function renderTraders() {
-  const main = $("#app");
-  main.replaceChildren(el("div", { class: "muted" }, "Loading..."));
-  const { data: traders, error } = await sb.from("traders").select("*").order("name");
-  if (error) return main.replaceChildren(el("div", { class: "err" }, error.message));
-  const { data: entries } = await sb.from("ledger_entries").select("trader_id,amount,paid");
-  const bal = {};
-  for (const e of entries || []) {
-    const b = bal[e.trader_id] ||= { open:0, paid:0 };
-    if (e.paid) b.paid += Number(e.amount); else b.open += Number(e.amount);
-  }
-
-  const list = el("div");
-  for (const t of traders || []) {
-    const b = bal[t.id] || { open:0, paid:0 };
-    list.append(el("div", { class: "trader-row", onclick: () => go("trader", { traderId: t.id, tab:"entries" }) },
-      el("div", {},
-        el("div", { class: "amount" }, t.name),
-        el("div", { class: "muted" }, "Open: " + fmt$(b.open) + "  ·  Paid: " + fmt$(b.paid))
-      ),
-      el("div", { class: "muted" }, "›")
-    ));
-  }
-
-  main.replaceChildren(
-    el("div", { class: "row", style:"justify-content:space-between; align-items:center; margin-bottom:12px;" },
-      el("div", {},
-        el("div", { class: "balance-big" }, "Traders"),
-        el("div", { class: "muted" }, `${traders?.length||0} total`)
-      ),
-      el("button", { class: "primary", onclick: addTraderPrompt }, "+ Add trader")
-    ),
-    list,
-    (traders && traders.length) ? "" : el("div", { class: "muted" }, "No traders yet.")
-  );
-}
-
-async function addTraderPrompt() {
-  const name = prompt("Trader name:");
-  if (!name) return;
-  const row = { id: uid(), name: name.trim(), created_at: nowIso() };
-  const { error } = await sb.from("traders").insert(row);
-  if (error) return alert(error.message);
-  await logHistory(row.id, "trader_added", row.name);
-  render();
-}
-
-async function renderTrader() {
-  const main = $("#app");
-  main.replaceChildren(el("div", { class: "muted" }, "Loading..."));
-  const { data: trader } = await sb.from("traders").select("*").eq("id", state.traderId).single();
-  if (!trader) { go("traders"); return; }
-
-  const { data: entries } = await sb.from("ledger_entries").select("*").eq("trader_id", trader.id).order("date", { ascending: false });
-  const { data: history } = await sb.from("ledger_history").select("*").eq("trader_id", trader.id).order("ts", { ascending: false });
-
-  let open = 0, paid = 0;
-  for (const e of entries || []) {
-    if (e.paid) paid += Number(e.amount); else open += Number(e.amount);
-  }
-
-  const tabs = el("div", { class: "tabs" },
-    el("button", { class: "tab " + (state.tab==="entries"?"active":""), onclick: () => go("trader", { traderId: trader.id, tab: "entries" }) }, "Entries"),
-    el("button", { class: "tab " + (state.tab==="history"?"active":""), onclick: () => go("trader", { traderId: trader.id, tab: "history" }) }, "History")
-  );
-
-  let body;
-  if (state.tab === "entries") {
-    body = el("div");
-    for (const e of entries || []) body.append(entryCard(e));
-    if (!entries?.length) body.append(el("div", { class: "muted" }, "No entries yet."));
-  } else {
-    body = el("div", { class: "card" });
-    for (const h of history || []) {
-      body.append(el("div", { class: "hist-row" },
-        el("div", {}, new Date(h.ts).toLocaleString() + " — " + h.by_user),
-        el("div", { class: "muted" }, h.action + (h.note ? ": " + h.note : ""))
-      ));
-    }
-    if (!history?.length) body.append(el("div", { class: "muted" }, "No history yet."));
-  }
-
-  main.replaceChildren(
-    el("div", { class: "row", style:"justify-content:space-between; align-items:center; margin-bottom:8px;" },
-      el("button", { class: "ghost", onclick: () => go("traders") }, "‹ Back"),
-      el("button", { class: "ghost danger", onclick: () => deleteTrader(trader) }, "Delete trader")
-    ),
-    el("div", { class: "balance-big" }, trader.name),
-    el("div", { class: "muted", style:"margin-bottom:12px;" }, "Open: " + fmt$(open) + "  ·  Paid: " + fmt$(paid)),
-    el("div", { style:"margin-bottom:12px;" },
-      el("button", { class: "primary", onclick: () => entryModal(trader) }, "+ Add entry")
-    ),
-    tabs,
-    body
-  );
-}
-
-function entryCard(e) {
-  const c = el("div", { class: "card" });
-  c.append(el("div", { class: "entry-head" },
-    el("div", {},
-      el("span", { class: "amount " + (e.paid?"paid":"unpaid") }, fmt$(e.amount)),
-      el("span", { class: "pill " + (e.paid?"paid":"unpaid") }, e.paid?"paid":"open"),
-      el("span", { class: "pill" }, e.entry_type || "general")
-    ),
-    el("div", { class: "muted" }, e.date || "")
-  ));
-  if (e.party) c.append(el("div", { style:"margin-top:6px;" }, el("strong", {}, e.party), e.proj ? " · " + e.proj : ""));
-  if (e.description) c.append(el("div", { class: "entry-desc" }, e.description));
-  c.append(el("div", { class: "entry-actions" },
-    el("button", { onclick: () => togglePaid(e) }, e.paid ? "Mark open" : "Mark paid"),
-    el("button", { onclick: () => entryModal(null, e) }, "Edit"),
-    el("button", { class: "danger", onclick: () => deleteEntry(e) }, "Delete")
-  ));
-  const metaBits = [];
-  if (e.created_by) metaBits.push("by " + e.created_by);
-  if (e.paid && e.paid_at) metaBits.push("paid " + new Date(e.paid_at).toLocaleDateString());
-  if (metaBits.length) c.append(el("div", { class: "muted", style:"margin-top:6px;" }, metaBits.join(" · ")));
-  return c;
-}
-
-async function togglePaid(e) {
-  const paid = !e.paid;
-  const patch = { paid, paid_at: paid ? nowIso() : null };
-  const { error } = await sb.from("ledger_entries").update(patch).eq("id", e.id);
-  if (error) return alert(error.message);
-  await logHistory(e.trader_id, paid ? "marked_paid" : "marked_open", fmt$(e.amount) + (e.description ? " · " + e.description : ""));
-  render();
-}
-
-async function deleteEntry(e) {
-  if (!confirm("Delete this entry?")) return;
-  const { error } = await sb.from("ledger_entries").delete().eq("id", e.id);
-  if (error) return alert(error.message);
-  await logHistory(e.trader_id, "deleted_entry", fmt$(e.amount) + (e.description ? " · " + e.description : ""));
-  render();
-}
-
-async function deleteTrader(t) {
-  if (!confirm(`Delete trader "${t.name}" and all their entries?`)) return;
-  await sb.from("ledger_entries").delete().eq("trader_id", t.id);
-  await sb.from("ledger_history").delete().eq("trader_id", t.id);
-  const { error } = await sb.from("traders").delete().eq("id", t.id);
-  if (error) return alert(error.message);
-  go("traders");
-}
-
-function entryModal(trader, existing=null) {
-  const t = trader || { id: state.traderId };
-  const e = existing || { date: today(), entry_type: "general", amount: "", paid: false };
-  const m = el("div", { class: "modal" });
-  const close = () => m.remove();
-
-  const fDate = el("input", { type: "date", value: e.date || today() });
-  const fParty = el("input", { placeholder: "Party (company or person)", value: e.party || "" });
-  const fAmount = el("input", { type: "number", step: "0.01", placeholder: "Amount", value: e.amount ?? "" });
-  const fDesc = el("textarea", { placeholder: "Description", rows: "2" });
-  fDesc.value = e.description || "";
-  const fProj = el("input", { placeholder: "Project", value: e.proj || "" });
-  const fType = el("select", {});
-  for (const v of ["labour","material","general"]) {
-    const o = el("option", { value: v }, v);
-    if ((e.entry_type||"general") === v) o.selected = true;
-    fType.append(o);
-  }
-  const fPaid = el("input", { type: "checkbox" });
-  if (e.paid) fPaid.checked = true;
-
-  const save = async () => {
-    const amt = parseFloat(fAmount.value);
-    if (isNaN(amt)) return alert("Amount required");
-    const paid = fPaid.checked;
-    const payload = {
-      trader_id: t.id,
-      party: fParty.value.trim() || null,
-      amount: amt,
-      description: fDesc.value.trim() || null,
-      proj: fProj.value.trim() || null,
-      entry_type: fType.value,
-      date: fDate.value || today(),
-      paid,
-      paid_at: paid ? (e.paid_at || nowIso()) : null,
-    };
-    if (existing) {
-      const { error } = await sb.from("ledger_entries").update(payload).eq("id", existing.id);
-      if (error) return alert(error.message);
-      await logHistory(t.id, "edited_entry", fmt$(amt) + (payload.description ? " · " + payload.description : ""));
-    } else {
-      payload.id = uid();
-      payload.created_at = nowIso();
-      payload.created_by = state.identity;
-      const { error } = await sb.from("ledger_entries").insert(payload);
-      if (error) return alert(error.message);
-      await logHistory(t.id, "added_entry", fmt$(amt) + (payload.description ? " · " + payload.description : ""));
-    }
-    close();
-    render();
-  };
-
-  m.append(el("div", { class: "modal-card" },
-    el("h2", { style:"margin:0 0 4px; font-size:18px;" }, existing ? "Edit entry" : "New entry"),
-    el("label", {}, "Date"), fDate,
-    el("label", {}, "Party"), fParty,
-    el("label", {}, "Amount"), fAmount,
-    el("label", {}, "Description"), fDesc,
-    el("label", {}, "Project"), fProj,
-    el("label", {}, "Type"), fType,
-    el("label", { style:"display:flex; align-items:center; gap:8px; margin-top:10px;" }, fPaid, "Paid"),
-    el("div", { class: "row", style:"margin-top:14px; justify-content:flex-end;" },
-      el("button", { onclick: close }, "Cancel"),
-      el("button", { class: "primary", onclick: save }, "Save")
-    )
-  ));
-  m.onclick = ev => { if (ev.target === m) close(); };
-  document.body.append(m);
-  setTimeout(() => fAmount.focus(), 50);
-}
-
-function render() {
-  const badge = $("#identity-badge");
-  if (state.identity) {
-    badge.replaceChildren(
-      el("span", { class: "muted" }, state.identity),
-      el("button", { class: "ghost", onclick: () => { localStorage.removeItem("mrl_identity"); state.identity=null; render(); } }, "switch")
-    );
-  } else {
-    badge.replaceChildren();
-  }
-  if (!state.identity) return renderIdentity();
-  if (state.view === "trader") return renderTrader();
-  return renderTraders();
-}
-
-render();
+window.addEventListener('online',()=>{document.getElementById('offline-bar').style.display='none';loadAll()});
+window.addEventListener('offline',()=>{document.getElementById('offline-bar').style.display=''});
+loadAll();
 </script>
 </body>
 </html>
