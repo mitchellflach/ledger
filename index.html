@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Maple Ridge Ledger</title>
+<style>
+  :root { --fg:#111; --muted:#666; --bg:#fff; --card:#f7f7f8; --line:#e4e4e7; --red:#c2410c; --green:#15803d; }
+  * { box-sizing:border-box; }
+  body { font:15px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif; color:var(--fg); background:var(--bg); margin:0; }
+  header { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:var(--bg); z-index:10; }
+  h1 { font-size:17px; margin:0; }
+  main { max-width:720px; margin:0 auto; padding:16px; }
+  button { font:inherit; cursor:pointer; border:1px solid var(--line); background:#fff; padding:8px 12px; border-radius:8px; }
+  button.primary { background:#111; color:#fff; border-color:#111; }
+  button.ghost { background:transparent; border-color:transparent; color:var(--muted); padding:6px 8px; }
+  button.danger { color:var(--red); }
+  input, select, textarea { font:inherit; width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  label { display:block; font-size:12px; color:var(--muted); margin:10px 0 4px; }
+  .row { display:flex; gap:8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; }
+  .muted { color:var(--muted); font-size:13px; }
+  .pill { display:inline-block; font-size:11px; padding:2px 6px; border-radius:10px; background:#eee; margin-left:6px; text-transform:uppercase; letter-spacing:.5px; }
+  .pill.paid { background:#dcfce7; color:var(--green); }
+  .pill.unpaid { background:#ffe4d6; color:var(--red); }
+  .amount { font-variant-numeric:tabular-nums; font-weight:600; }
+  .amount.paid { color:var(--green); }
+  .amount.unpaid { color:var(--red); }
+  .tabs { display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:12px; }
+  .tab { padding:8px 12px; border:0; background:transparent; border-bottom:2px solid transparent; border-radius:0; }
+  .tab.active { border-bottom-color:#111; font-weight:600; }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
+  .modal-card { background:#fff; border-radius:12px; padding:16px; width:100%; max-width:440px; max-height:90vh; overflow:auto; }
+  .identity-screen { min-height:70vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }
+  .identity-screen button { font-size:18px; padding:16px 28px; width:220px; }
+  .trader-row { display:flex; justify-content:space-between; align-items:center; padding:14px; background:var(--card); border:1px solid var(--line); border-radius:10px; margin-bottom:8px; cursor:pointer; }
+  .trader-row:hover { background:#eee; }
+  .balance-big { font-size:24px; font-weight:700; }
+  .entry-head { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+  .entry-desc { margin-top:4px; font-size:13px; color:var(--muted); }
+  .entry-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+  .hist-row { padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px; }
+  .hist-row:last-child { border:0; }
+  .err { color:var(--red); font-size:13px; margin-top:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Maple Ridge Ledger</h1>
+  <div id="identity-badge"></div>
+</header>
+<main id="app"></main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://cxyzruafgfmekddqsiny.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4eXpydWFmZ2ZtZWtkZHFzaW55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NTEyOTIsImV4cCI6MjA5MjAyNzI5Mn0.vO34QYY4cgqJmZNTboxjva_xsN_pVBBRkRSU0T1XwVA";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const $ = (s, r=document) => r.querySelector(s);
+const el = (t, attrs={}, ...kids) => {
+  const e = document.createElement(t);
+  for (const [k,v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v;
+    else if (k === "onclick") e.onclick = v;
+    else if (k === "style") e.setAttribute("style", v);
+    else e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) {
+    if (k == null || k === "") continue;
+    e.append(k?.nodeType ? k : document.createTextNode(k));
+  }
+  return e;
+};
+const fmt$ = n => (Number(n)<0?"-":"") + "$" + Math.abs(Number(n)||0).toFixed(2);
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now()+"-"+Math.random().toString(36).slice(2,10));
+const today = () => new Date().toISOString().slice(0,10);
+const nowIso = () => new Date().toISOString();
+
+const state = {
+  identity: localStorage.getItem("mrl_identity") || null,
+  view: "traders",
+  traderId: null,
+  tab: "entries",
+};
+
+function setIdentity(name) {
+  state.identity = name;
+  localStorage.setItem("mrl_identity", name);
+  render();
+}
+
+function go(view, extra={}) {
+  Object.assign(state, { view, ...extra });
+  render();
+}
+
+async function logHistory(trader_id, action, note) {
+  await sb.from("ledger_history").insert({
+    id: uid(), trader_id, ts: nowIso(), by_user: state.identity, action, note: note || null
+  });
+}
+
+function renderIdentity() {
+  $("#app").replaceChildren(
+    el("div", { class: "identity-screen" },
+      el("div", { class: "muted" }, "Who are you?"),
+      el("button", { class: "primary", onclick: () => setIdentity("Mitch") }, "I am Mitch"),
+      el("button", { class: "primary", onclick: () => setIdentity("Lukas") }, "I am Lukas")
+    )
+  );
+}
+
+async function renderTraders() {
+  const main = $("#app");
+  main.replaceChildren(el("div", { class: "muted" }, "Loading..."));
+  const { data: traders, error } = await sb.from("traders").select("*").order("name");
+  if (error) return main.replaceChildren(el("div", { class: "err" }, error.message));
+  const { data: entries } = await sb.from("ledger_entries").select("trader_id,amount,paid");
+  const bal = {};
+  for (const e of entries || []) {
+    const b = bal[e.trader_id] ||= { open:0, paid:0 };
+    if (e.paid) b.paid += Number(e.amount); else b.open += Number(e.amount);
+  }
+
+  const list = el("div");
+  for (const t of traders || []) {
+    const b = bal[t.id] || { open:0, paid:0 };
+    list.append(el("div", { class: "trader-row", onclick: () => go("trader", { traderId: t.id, tab:"entries" }) },
+      el("div", {},
+        el("div", { class: "amount" }, t.name),
+        el("div", { class: "muted" }, "Open: " + fmt$(b.open) + "  ·  Paid: " + fmt$(b.paid))
+      ),
+      el("div", { class: "muted" }, "›")
+    ));
+  }
+
+  main.replaceChildren(
+    el("div", { class: "row", style:"justify-content:space-between; align-items:center; margin-bottom:12px;" },
+      el("div", {},
+        el("div", { class: "balance-big" }, "Traders"),
+        el("div", { class: "muted" }, `${traders?.length||0} total`)
+      ),
+      el("button", { class: "primary", onclick: addTraderPrompt }, "+ Add trader")
+    ),
+    list,
+    (traders && traders.length) ? "" : el("div", { class: "muted" }, "No traders yet.")
+  );
+}
+
+async function addTraderPrompt() {
+  const name = prompt("Trader name:");
+  if (!name) return;
+  const row = { id: uid(), name: name.trim(), created_at: nowIso() };
+  const { error } = await sb.from("traders").insert(row);
+  if (error) return alert(error.message);
+  await logHistory(row.id, "trader_added", row.name);
+  render();
+}
+
+async function renderTrader() {
+  const main = $("#app");
+  main.replaceChildren(el("div", { class: "muted" }, "Loading..."));
+  const { data: trader } = await sb.from("traders").select("*").eq("id", state.traderId).single();
+  if (!trader) { go("traders"); return; }
+
+  const { data: entries } = await sb.from("ledger_entries").select("*").eq("trader_id", trader.id).order("date", { ascending: false });
+  const { data: history } = await sb.from("ledger_history").select("*").eq("trader_id", trader.id).order("ts", { ascending: false });
+
+  let open = 0, paid = 0;
+  for (const e of entries || []) {
+    if (e.paid) paid += Number(e.amount); else open += Number(e.amount);
+  }
+
+  const tabs = el("div", { class: "tabs" },
+    el("button", { class: "tab " + (state.tab==="entries"?"active":""), onclick: () => go("trader", { traderId: trader.id, tab: "entries" }) }, "Entries"),
+    el("button", { class: "tab " + (state.tab==="history"?"active":""), onclick: () => go("trader", { traderId: trader.id, tab: "history" }) }, "History")
+  );
+
+  let body;
+  if (state.tab === "entries") {
+    body = el("div");
+    for (const e of entries || []) body.append(entryCard(e));
+    if (!entries?.length) body.append(el("div", { class: "muted" }, "No entries yet."));
+  } else {
+    body = el("div", { class: "card" });
+    for (const h of history || []) {
+      body.append(el("div", { class: "hist-row" },
+        el("div", {}, new Date(h.ts).toLocaleString() + " — " + h.by_user),
+        el("div", { class: "muted" }, h.action + (h.note ? ": " + h.note : ""))
+      ));
+    }
+    if (!history?.length) body.append(el("div", { class: "muted" }, "No history yet."));
+  }
+
+  main.replaceChildren(
+    el("div", { class: "row", style:"justify-content:space-between; align-items:center; margin-bottom:8px;" },
+      el("button", { class: "ghost", onclick: () => go("traders") }, "‹ Back"),
+      el("button", { class: "ghost danger", onclick: () => deleteTrader(trader) }, "Delete trader")
+    ),
+    el("div", { class: "balance-big" }, trader.name),
+    el("div", { class: "muted", style:"margin-bottom:12px;" }, "Open: " + fmt$(open) + "  ·  Paid: " + fmt$(paid)),
+    el("div", { style:"margin-bottom:12px;" },
+      el("button", { class: "primary", onclick: () => entryModal(trader) }, "+ Add entry")
+    ),
+    tabs,
+    body
+  );
+}
+
+function entryCard(e) {
+  const c = el("div", { class: "card" });
+  c.append(el("div", { class: "entry-head" },
+    el("div", {},
+      el("span", { class: "amount " + (e.paid?"paid":"unpaid") }, fmt$(e.amount)),
+      el("span", { class: "pill " + (e.paid?"paid":"unpaid") }, e.paid?"paid":"open"),
+      el("span", { class: "pill" }, e.entry_type || "general")
+    ),
+    el("div", { class: "muted" }, e.date || "")
+  ));
+  if (e.party) c.append(el("div", { style:"margin-top:6px;" }, el("strong", {}, e.party), e.proj ? " · " + e.proj : ""));
+  if (e.description) c.append(el("div", { class: "entry-desc" }, e.description));
+  c.append(el("div", { class: "entry-actions" },
+    el("button", { onclick: () => togglePaid(e) }, e.paid ? "Mark open" : "Mark paid"),
+    el("button", { onclick: () => entryModal(null, e) }, "Edit"),
+    el("button", { class: "danger", onclick: () => deleteEntry(e) }, "Delete")
+  ));
+  const metaBits = [];
+  if (e.created_by) metaBits.push("by " + e.created_by);
+  if (e.paid && e.paid_at) metaBits.push("paid " + new Date(e.paid_at).toLocaleDateString());
+  if (metaBits.length) c.append(el("div", { class: "muted", style:"margin-top:6px;" }, metaBits.join(" · ")));
+  return c;
+}
+
+async function togglePaid(e) {
+  const paid = !e.paid;
+  const patch = { paid, paid_at: paid ? nowIso() : null };
+  const { error } = await sb.from("ledger_entries").update(patch).eq("id", e.id);
+  if (error) return alert(error.message);
+  await logHistory(e.trader_id, paid ? "marked_paid" : "marked_open", fmt$(e.amount) + (e.description ? " · " + e.description : ""));
+  render();
+}
+
+async function deleteEntry(e) {
+  if (!confirm("Delete this entry?")) return;
+  const { error } = await sb.from("ledger_entries").delete().eq("id", e.id);
+  if (error) return alert(error.message);
+  await logHistory(e.trader_id, "deleted_entry", fmt$(e.amount) + (e.description ? " · " + e.description : ""));
+  render();
+}
+
+async function deleteTrader(t) {
+  if (!confirm(`Delete trader "${t.name}" and all their entries?`)) return;
+  await sb.from("ledger_entries").delete().eq("trader_id", t.id);
+  await sb.from("ledger_history").delete().eq("trader_id", t.id);
+  const { error } = await sb.from("traders").delete().eq("id", t.id);
+  if (error) return alert(error.message);
+  go("traders");
+}
+
+function entryModal(trader, existing=null) {
+  const t = trader || { id: state.traderId };
+  const e = existing || { date: today(), entry_type: "general", amount: "", paid: false };
+  const m = el("div", { class: "modal" });
+  const close = () => m.remove();
+
+  const fDate = el("input", { type: "date", value: e.date || today() });
+  const fParty = el("input", { placeholder: "Party (company or person)", value: e.party || "" });
+  const fAmount = el("input", { type: "number", step: "0.01", placeholder: "Amount", value: e.amount ?? "" });
+  const fDesc = el("textarea", { placeholder: "Description", rows: "2" });
+  fDesc.value = e.description || "";
+  const fProj = el("input", { placeholder: "Project", value: e.proj || "" });
+  const fType = el("select", {});
+  for (const v of ["labour","material","general"]) {
+    const o = el("option", { value: v }, v);
+    if ((e.entry_type||"general") === v) o.selected = true;
+    fType.append(o);
+  }
+  const fPaid = el("input", { type: "checkbox" });
+  if (e.paid) fPaid.checked = true;
+
+  const save = async () => {
+    const amt = parseFloat(fAmount.value);
+    if (isNaN(amt)) return alert("Amount required");
+    const paid = fPaid.checked;
+    const payload = {
+      trader_id: t.id,
+      party: fParty.value.trim() || null,
+      amount: amt,
+      description: fDesc.value.trim() || null,
+      proj: fProj.value.trim() || null,
+      entry_type: fType.value,
+      date: fDate.value || today(),
+      paid,
+      paid_at: paid ? (e.paid_at || nowIso()) : null,
+    };
+    if (existing) {
+      const { error } = await sb.from("ledger_entries").update(payload).eq("id", existing.id);
+      if (error) return alert(error.message);
+      await logHistory(t.id, "edited_entry", fmt$(amt) + (payload.description ? " · " + payload.description : ""));
+    } else {
+      payload.id = uid();
+      payload.created_at = nowIso();
+      payload.created_by = state.identity;
+      const { error } = await sb.from("ledger_entries").insert(payload);
+      if (error) return alert(error.message);
+      await logHistory(t.id, "added_entry", fmt$(amt) + (payload.description ? " · " + payload.description : ""));
+    }
+    close();
+    render();
+  };
+
+  m.append(el("div", { class: "modal-card" },
+    el("h2", { style:"margin:0 0 4px; font-size:18px;" }, existing ? "Edit entry" : "New entry"),
+    el("label", {}, "Date"), fDate,
+    el("label", {}, "Party"), fParty,
+    el("label", {}, "Amount"), fAmount,
+    el("label", {}, "Description"), fDesc,
+    el("label", {}, "Project"), fProj,
+    el("label", {}, "Type"), fType,
+    el("label", { style:"display:flex; align-items:center; gap:8px; margin-top:10px;" }, fPaid, "Paid"),
+    el("div", { class: "row", style:"margin-top:14px; justify-content:flex-end;" },
+      el("button", { onclick: close }, "Cancel"),
+      el("button", { class: "primary", onclick: save }, "Save")
+    )
+  ));
+  m.onclick = ev => { if (ev.target === m) close(); };
+  document.body.append(m);
+  setTimeout(() => fAmount.focus(), 50);
+}
+
+function render() {
+  const badge = $("#identity-badge");
+  if (state.identity) {
+    badge.replaceChildren(
+      el("span", { class: "muted" }, state.identity),
+      el("button", { class: "ghost", onclick: () => { localStorage.removeItem("mrl_identity"); state.identity=null; render(); } }, "switch")
+    );
+  } else {
+    badge.replaceChildren();
+  }
+  if (!state.identity) return renderIdentity();
+  if (state.view === "trader") return renderTrader();
+  return renderTraders();
+}
+
+render();
+</script>
+</body>
+</html>
